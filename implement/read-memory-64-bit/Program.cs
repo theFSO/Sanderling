@@ -115,6 +115,12 @@ class Program
                         "File to save the memory reading result to.",
                         CommandOptionType.SingleValue);
 
+                var noFileParam =
+                    readMemoryEveOnlineCmd.Option(
+                        "--no-file",
+                        "Write the JSON result directly to stdout instead of saving it to a file. All status messages are redirected to stderr.",
+                        CommandOptionType.NoValue);
+
                 var removeOtherDictEntriesParam =
                     readMemoryEveOnlineCmd.Option(
                         "--remove-other-dict-entries",
@@ -134,8 +140,14 @@ class Program
                         var rootAddressArgument = rootAddressParam.Value();
                         var sourceFileArgument = sourceFileParam.Value();
                         var outputFileArgument = outputFileParam.Value();
+                        var noFileArgument = noFileParam.HasValue();
                         var removeOtherDictEntriesArgument = removeOtherDictEntriesParam.HasValue();
                         var warmupIterationsArgument = warmupIterationsParam.Value();
+
+                        var originalStdOut = Console.Out;
+
+                        if (noFileArgument)
+                            Console.SetOut(Console.Error);
 
                         var processId =
                             0 < processIdArgument?.Length
@@ -300,24 +312,34 @@ class Program
                             var sampleId =
                                 Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(fileContent));
 
-                            var outputFilePath = outputFileArgument;
-
-                            if (!(0 < outputFileArgument?.Length))
+                            if (noFileArgument)
                             {
-                                var outputFileName = "eve-online-memory-reading-" + sampleId[..10] + ".json";
+                                Console.WriteLine(
+                                    $"Writing memory reading {sampleId} from address 0x{largestUiTree.pythonObjectAddress:X} to stdout.");
 
-                                outputFilePath =
-                                    System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), outputFileName);
+                                originalStdOut.Write(uiTreeAsJson);
+                            }
+                            else
+                            {
+                                var outputFilePath = outputFileArgument;
+
+                                if (!(0 < outputFileArgument?.Length))
+                                {
+                                    var outputFileName = "eve-online-memory-reading-" + sampleId[..10] + ".json";
+
+                                    outputFilePath =
+                                        System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), outputFileName);
+
+                                    Console.WriteLine(
+                                        "I found no configuration of an output file path, so I use '" +
+                                        outputFilePath + "' as the default.");
+                                }
+
+                                System.IO.File.WriteAllBytes(outputFilePath, fileContent);
 
                                 Console.WriteLine(
-                                    "I found no configuration of an output file path, so I use '" +
-                                    outputFilePath + "' as the default.");
+                                    $"I saved memory reading {sampleId} from address 0x{largestUiTree.pythonObjectAddress:X} to file '{outputFilePath}'.");
                             }
-
-                            System.IO.File.WriteAllBytes(outputFilePath, fileContent);
-
-                            Console.WriteLine(
-                                $"I saved memory reading {sampleId} from address 0x{largestUiTree.pythonObjectAddress:X} to file '{outputFilePath}'.");
                         }
                         else
                         {
