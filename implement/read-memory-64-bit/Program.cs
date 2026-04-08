@@ -149,6 +149,8 @@ class Program
                         if (noFileArgument)
                             Console.SetOut(Console.Error);
 
+                        try
+                        {
                         var processId =
                             0 < processIdArgument?.Length
                             ?
@@ -344,6 +346,12 @@ class Program
                         else
                         {
                             Console.WriteLine("No largest UI tree.");
+                        }
+                        }
+                        finally
+                        {
+                            if (noFileArgument)
+                                Console.SetOut(originalStdOut);
                         }
                     });
             });
